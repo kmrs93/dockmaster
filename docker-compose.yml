@@ -1,0 +1,15 @@
+services:
+  dockmaster:
+    build: .
+    container_name: dockmaster
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    # privileged: true is NOT needed if you map the socket correctly
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # We only need the data directory
+      - ${HOME}/DATA/stacks:/stacks
+    environment:
+      - PROXY_PROVIDER=caddy
+      - DOCKER_HOST_IP=192.168.1.100
