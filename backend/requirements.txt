@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
-docker==6.1.3
-urllib3<2
-requests==2.31.0
-pydantic
+docker
+psutil
+python-jose[cryptography]
+bcrypt
+python-multipart

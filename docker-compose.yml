@@ -1,15 +1,36 @@
 services:
   dockmaster:
-    build: .
+    # Points to the GHCR image built by your GitHub Action
+    image: ghcr.io/${GITHUB_USERNAME}/dockmaster:latest
     container_name: dockmaster
     restart: unless-stopped
+    
+    # Required for accurate host system monitoring (CPU/RAM/Net)
+    network_mode: "host"
+    pid: "host"
+    
+    # Ports are still mapped for documentation, though host mode ignores this
     ports:
       - "5555:5555"
-    # privileged: true is NOT needed if you map the socket correctly
+    
     volumes:
+      # Docker Socket & Binaries for executing commands from the UI
       - /var/run/docker.sock:/var/run/docker.sock
-      # We only need the data directory
-      - ${HOME}/DATA/stacks:/stacks
+      - /usr/bin/docker:/usr/bin/docker
+      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins
+      
+      # Persistence (Uses variables for local paths)
+      # ${STACKS_PATH} should point to your ~/DATA/stacks
+      - ${STACKS_PATH}:/app/projects
+      - ${CONFIG_PATH}:/app/config
+      
+      # Host Root (Read-Only) for disk usage stats
+      - /:/host:ro 
+
     environment:
-      - PROXY_PROVIDER=caddy
-      - DOCKER_HOST_IP=192.168.1.100
+      - STACKS_ROOT=/app/projects
+      - PROXY_PROVIDER=${PROXY_PROVIDER:-caddy}
+      - DOCKER_HOST_IP=${DOCKER_HOST_IP}
+      # Note: Use double $$ in compose to escape the $ in Bcrypt hashes
+      - DOCKMASTER_PASSWORD_HASH=${DOCKMASTER_PASSWORD_HASH}
+      - JWT_SECRET=${JWT_SECRET}

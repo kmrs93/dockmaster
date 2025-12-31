@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Production Builds
+dist/
+static/*
+!static/.gitkeep
+
+# Environments & Secrets
+.env
+.env.*
