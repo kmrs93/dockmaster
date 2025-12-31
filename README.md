@@ -21,7 +21,7 @@ mkdir -p ~/DATA/stacks
 cd ~/dockmaster
 ```
 
-###3. Configure the Environment
+### 3. Configure the Environment
 Create a local .env file. Important: Use a strong, unique secret for the JWT and a pre-hashed Bcrypt password.
 
 ```bash
@@ -39,7 +39,7 @@ STACKS_PATH=/home/kmrs93/DATA/stacks
 CONFIG_PATH=/home/kmrs93/AppData/dockmaster/config
 ```
 
-###4. Production Docker Compose
+### 4. Production Docker Compose
 Save this as docker-compose.yml. This configuration mounts the Docker socket and host binaries to allow DockMaster to manage other containers on the host.
 
 ```YAML
@@ -64,17 +64,17 @@ services:
       - JWT_SECRET=${JWT_SECRET}
 ```
 
-###5. Launch
+### 5. Launch
 
 ```Bash
 docker compose pull
 docker compose up -d
 ```
 
-###🔒 Security Best Practices
+### 🔒 Security Best Practices
 1. Firewall: Ensure port 5555 is only accessible via your internal network or your Reverse Proxy.
 2. Docker Socket: Mounting /var/run/docker.sock gives the container root-level access to your host. Only deploy this on a secured server you control.
 3. Password Hashing: Never store your password in plain text. Use a Bcrypt generator to create your DOCKMASTER_PASSWORD_HASH.
 
-###📝 License
+### 📝 License
 MIT
