@@ -35,8 +35,8 @@ JWT_SECRET=4f92...a381
 DOCKMASTER_PASSWORD_HASH=$2b$12$agF1w3GGUyhadar2ZgYNLeMfadEiIe3auVoNMNPBg0TVAoC2mD0tK
 
 # Path Mappings
-STACKS_PATH=/home/kmrs93/DATA/stacks
-CONFIG_PATH=/home/kmrs93/AppData/dockmaster/config
+STACKS_PATH=${HOME}/DATA/stacks
+CONFIG_PATH=${HOME}/AppData/dockmaster/config
 ```
 
 ### 4. Production Docker Compose
