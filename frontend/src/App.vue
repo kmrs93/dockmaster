@@ -45,7 +45,6 @@
             </button>
           </div>
         </div>
-
         <transition name="menu-fade">
           <div v-if="menuOpen" @click.stop class="absolute right-0 top-14 z-[1000]">
             <div class="bg-dm-card border border-slate-700 rounded-2xl shadow-2xl w-56 overflow-hidden">
@@ -57,7 +56,7 @@
               </div>
               <template v-if="isEditMode">
                 <div @click="openGlobalVariables(); menuOpen = false" class="p-4 hover:bg-white/5 cursor-pointer border-t border-slate-700/30 text-xs font-bold text-slate-300 uppercase">Global Registry</div>
-                <button @click="openCreationModal(); menuOpen = false" class="w-full text-left p-4 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 uppercase border-t border-slate-700/30">＋ New Stack</button>
+                <button @click="openCreationModal(); menuOpen = false" class="w-full text-left p-4 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 uppercase border-t border-slate-700/30">＋  New Stack</button>
               </template>
               <button @click="logout" class="w-full text-left p-4 text-xs font-bold text-rose-500 hover:bg-rose-500/10 uppercase border-t border-slate-700/30">Logout</button>
             </div>
@@ -84,7 +83,6 @@
               </div>
             </div>
           </div>
-
           <div class="space-y-3">
             <div v-for="cont in stack.containers" :key="cont.id" class="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30 flex items-center justify-between">
               <div class="flex items-center gap-3 overflow-hidden">
@@ -205,6 +203,9 @@ const terminal = reactive({ visible: false, title: '' }), terminalElement = ref(
 const parsedVars = ref({}), globalVarsObj = ref({}), globalVarKeys = ref({});
 let xterm, socket, fitAddon, parseTimer;
 
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_HOST = window.location.host;
+
 axios.interceptors.request.use(c => {
   const t = localStorage.getItem('dm_token');
   if (t) c.headers.Authorization = `Bearer ${t}`;
@@ -257,8 +258,8 @@ const debounceParse = () => {
 const openEditor = async (sn, fn) => {
     const [r1, r2] = await Promise.all([axios.get(`/api/stack/${sn}/file/${fn}`), axios.get(`/api/stack/GLOBAL/file/global.env`)]);
     editor.content = r1.data.content; editor.secondaryContent = r2.data.content;
-    editor.stack = sn; editor.filename = fn; editor.isGlobal = false; editor.visible = true;
-    debounceParse();
+    editor.stack = sn; editor.filename = fn; editor.isGlobal = false;
+    editor.visible = true; debounceParse();
 };
 
 const openGlobalVariables = async () => {
@@ -286,12 +287,11 @@ const saveSmartFile = async () => {
 };
 
 const deleteStackConfirm = async (sn) => {
-    if(confirm(`WARNING: This will permanently delete the folder for stack: ${sn}. This cannot be undone. Proceed?`)) {
+    if(confirm(`WARNING: This will permanently delete the folder for stack: ${sn}. Proceed?`)) {
         await axios.delete(`/api/stack/${sn}`);
-        editor.visible = false;
-        fetchStacks();
+        editor.visible = false; fetchStacks();
     }
-}
+};
 
 const openMetadataEditor = (c) => {
     metadataModal.containerId = c.id;
@@ -315,7 +315,7 @@ const openContainerUI = (c) => {
     if (c.url) window.open(c.url, '_blank');
     else {
         const p = Object.values(c.ports).find(v => v !== null)?.[0]?.HostPort;
-        window.open(`http://${window.location.hostname}${p ? ':' + p : ''}`, '_blank');
+        window.open(`${window.location.protocol}//${window.location.hostname}${p ? ':' + p : ''}`, '_blank');
     }
 };
 
@@ -331,13 +331,13 @@ const setupTerminal = (t) => {
 
 const triggerLogs = (c) => {
     setupTerminal(`Logs: ${c.name}`);
-    socket = new WebSocket(`ws://${window.location.host}/ws/logs/${c.id}?token=${localStorage.getItem('dm_token')}`);
+    socket = new WebSocket(`${WS_PROTOCOL}//${WS_HOST}/ws/logs/${c.id}?token=${localStorage.getItem('dm_token')}`);
     socket.onmessage = (e) => xterm.write(e.data);
 };
 
 const triggerDeploy = (n) => {
     setupTerminal(`Deploy: ${n}`);
-    socket = new WebSocket(`ws://${window.location.host}/ws/deploy/${n}?token=${localStorage.getItem('dm_token')}`);
+    socket = new WebSocket(`${WS_PROTOCOL}//${WS_HOST}/ws/deploy/${n}?token=${localStorage.getItem('dm_token')}`);
     socket.onmessage = (e) => xterm.write(e.data);
     socket.onclose = () => fetchStacks();
 };
@@ -345,36 +345,37 @@ const triggerDeploy = (n) => {
 const triggerDown = (n) => {
     if(confirm(`Down stack ${n}?`)) {
         setupTerminal(`Down: ${n}`);
-        socket = new WebSocket(`ws://${window.location.host}/ws/down/${n}?token=${localStorage.getItem('dm_token')}`);
+        socket = new WebSocket(`${WS_PROTOCOL}//${WS_HOST}/ws/down/${n}?token=${localStorage.getItem('dm_token')}`);
         socket.onmessage = (e) => xterm.write(e.data);
         socket.onclose = () => fetchStacks();
     }
 };
 
-const closeTerminal = () => { 
+const closeTerminal = () => {
     if(socket && socket.readyState === WebSocket.OPEN) socket.send("QUIT");
-    if(socket) socket.close(); 
-    terminal.visible = false; 
-    fetchStacks(); 
+    if(socket) socket.close();
+    terminal.visible = false; fetchStacks();
 };
 
 const runAction = async (id, a) => { await axios.post(`/api/container/${id}/${a}`); setTimeout(fetchStacks, 1000); };
-const openCreationModal = async () => { 
-    const n = prompt("New Stack Name:"); 
+
+const openCreationModal = async () => {
+    const n = prompt("New Stack Name:");
     if(n) {
         try {
-            await axios.post('/api/stack/create', { name: n }); 
-            fetchStacks(); 
+            await axios.post('/api/stack/create', { name: n });
+            fetchStacks();
         } catch(e) {
             alert("Error: " + (e.response?.data?.detail || "Method Not Allowed"));
         }
     }
 };
 
-const addNewVariable = () => { 
-    const id = Math.random().toString(36).substr(2, 9); 
-    globalVarKeys.value[id] = ""; globalVarsObj.value[id] = ""; 
+const addNewVariable = () => {
+    const id = Math.random().toString(36).substr(2, 9);
+    globalVarKeys.value[id] = ""; globalVarsObj.value[id] = "";
 };
+
 const deleteVariable = (id) => { delete globalVarsObj.value[id]; delete globalVarKeys.value[id]; };
 
 onMounted(() => { if (localStorage.getItem('dm_token')) { isLoggedIn.value = true; startApp(); } });
