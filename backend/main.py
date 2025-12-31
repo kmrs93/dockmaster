@@ -1,178 +1,220 @@
-import os, json, asyncio, shutil, logging
+import os, json, asyncio, shutil, logging, psutil, threading, queue, bcrypt
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
-from fastapi import FastAPI, WebSocket, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 from pydantic import BaseModel
 import docker
 
-STACKS_DIR = "/stacks"
-GLOBAL_ENV_PATH = "/stacks/.env"
+# --- CONFIG ---
+STACKS_DIR = os.getenv("STACKS_ROOT", "/app/projects")
+GLOBAL_ENV_PATH = os.path.join(STACKS_DIR, ".env")
+CONFIG_DIR = "/app/config"
+METADATA_FILE = os.path.join(CONFIG_DIR, "metadata.json")
+SECRET_KEY = os.getenv("JWT_SECRET", "dockmaster_32_bit_secret")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+PWD_HASH = os.getenv("DOCKMASTER_PASSWORD_HASH")
 
+os.makedirs(CONFIG_DIR, exist_ok=True)
+PROXY_PROVIDER = os.getenv("PROXY_PROVIDER", "caddy").lower()
+DOCKER_HOST_IP = os.getenv("DOCKER_HOST_IP", "localhost")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("DockMaster")
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-def get_docker_client():
-    try: return docker.from_env()
-    except: raise HTTPException(status_code=503, detail="Docker Unavailable")
+# --- HELPERS ---
+def get_metadata():
+    if os.path.exists(METADATA_FILE):
+        try:
+            with open(METADATA_FILE, "r") as f: return json.load(f)
+        except: return {}
+    return {}
 
+def save_metadata(data):
+    with open(METADATA_FILE, "w") as f: json.dump(data, f, indent=4)
+
+def resolve_url(container, manual_url=None):
+    if manual_url: return manual_url
+    labels = container.labels
+    if PROXY_PROVIDER == "caddy":
+        host = labels.get("caddy") or labels.get("caddy.reverse_proxy")
+        if host: return f"https://{host.split(',')[0].strip().replace('http://', '').replace('https://', '')}"
+    ports = container.attrs['NetworkSettings']['Ports']
+    for p in ports:
+        if ports[p]:
+            hp = ports[p][0].get("HostPort")
+            if hp: return f"http://{DOCKER_HOST_IP}:{hp}"
+    return None
+
+def verify_token(token: str):
+    try: return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]).get("sub")
+    except JWTError: return None
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    u = verify_token(token)
+    if not u: raise HTTPException(status_code=401)
+    return u
+
+def get_docker_client():
+    return docker.from_env()
+
+# --- MODELS ---
 class ContainerMeta(BaseModel):
-    id: str
-    name: str
-    status: str
-    state: str
-    icon: str = ""
-    labels: Dict[str, str] = {}
-    ports: Dict[str, Optional[List[Dict[str, str]]]] = {}
+    id: str; name: str; display_name: str = ""; status: str; state: str; icon: str = ""; url: Optional[str] = None; ports: Dict = {}
 
 class Stack(BaseModel):
-    name: str
-    status: str
-    containers: List[ContainerMeta]
+    name: str; status: str; containers: List[ContainerMeta]
 
 class FileUpdate(BaseModel):
-    content: str
-    filename: str
+    content: str; filename: str
 
-@app.get("/api/config")
-def get_config():
-    return {
-        "proxy_provider": os.getenv("PROXY_PROVIDER", "traefik").lower(),
-        "docker_host_ip": os.getenv("DOCKER_HOST_IP", "")
-    }
+# --- ROUTES ---
+@app.post("/api/login")
+async def login(f: OAuth2PasswordRequestForm = Depends()):
+    if not PWD_HASH or not bcrypt.checkpw(f.password.encode(), PWD_HASH.encode()):
+        raise HTTPException(status_code=401)
+    return {"access_token": jwt.encode({"sub":"admin", "exp": datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)}, SECRET_KEY, algorithm=ALGORITHM), "token_type": "bearer"}
+
+@app.get("/api/system/stats")
+def get_stats(u: str = Depends(get_current_user)):
+    t = 0
+    try: 
+        with open("/sys/class/thermal/thermal_zone0/temp", "r") as f: t = int(f.read())/1000
+    except: pass
+    return {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent, "disk": psutil.disk_usage('/').percent, "temp": round(t, 1)}
 
 @app.get("/api/stacks")
-def list_stacks():
+def list_stacks(u: str = Depends(get_current_user)):
     client = get_docker_client()
+    meta = get_metadata()
+    all_conts = client.containers.list(all=True)
+    pmap = {}
+    for c in all_conts:
+        p = c.labels.get("com.docker.compose.project")
+        if p:
+            if p not in pmap: pmap[p] = []
+            pmap[p].append(c)
+    
+    res = []
     if not os.path.exists(STACKS_DIR): return []
-    stacks = []
     for d in os.listdir(STACKS_DIR):
-        full_path = os.path.join(STACKS_DIR, d)
-        if os.path.isdir(full_path) and not d.startswith('.'):
-            try:
-                conts = client.containers.list(all=True, filters={"label": f"com.docker.compose.project={d}"})
-                if not conts: conts = client.containers.list(all=True, filters={"label": f"com.docker.compose.project={d.lower()}"})
-            except: conts = []
-            
-            sidecar = {}
-            try:
-                with open(os.path.join(full_path, ".dockmaster.json"), 'r') as f: sidecar = json.load(f)
-            except: pass
-
+        if os.path.isdir(os.path.join(STACKS_DIR, d)) and not d.startswith('.'):
+            conts = pmap.get(d) or pmap.get(d.lower(), [])
+            clist = [ContainerMeta(id=c.id, name=c.name, display_name=meta.get(c.id,{}).get("display_name", c.name), status=c.status, state=c.attrs['State']['Status'], icon=meta.get(c.id,{}).get("icon",""), url=resolve_url(c, meta.get(c.id,{}).get("url")), ports=c.attrs['NetworkSettings']['Ports']) for c in conts]
             status = "Stopped"
-            if conts:
-                if any(c.status == 'running' for c in conts):
-                    status = "Running" if all(c.status == 'running' for c in conts) else "Partial"
-            
-            container_list = [ContainerMeta(
-                id=c.id, name=c.name, status=c.status, state=c.attrs['State']['Status'],
-                icon=sidecar.get('icons', {}).get(c.name, ""),
-                labels=c.labels, ports=c.attrs['NetworkSettings']['Ports']
-            ) for c in conts]
-            stacks.append(Stack(name=d, status=status, containers=container_list))
-    return sorted(stacks, key=lambda x: x.name)
-
-@app.get("/api/stacks/stats")
-async def get_all_stats():
-    stats_data = {}
-    try:
-        containers = client.containers.list()
-        for container in containers:
-            # We get a single snapshot of stats
-            s = container.stats(stream=False)
-            
-            # CPU Calculation
-            cpu_delta = s["cpu_stats"]["cpu_usage"]["total_usage"] - s["precpu_stats"]["cpu_usage"]["total_usage"]
-            system_delta = s["cpu_stats"]["system_cpu_usage"] - s["precpu_stats"]["system_cpu_usage"]
-            cpu_percent = 0.0
-            if system_delta > 0.0 and cpu_delta > 0.0:
-                cpu_percent = (cpu_delta / system_delta) * len(s["cpu_stats"]["cpu_usage"]["percpu_usage"]) * 100.0
-
-            # Memory Calculation
-            mem_usage = s["memory_stats"]["usage"]
-            mem_limit = s["memory_stats"]["limit"]
-            mem_percent = (mem_usage / mem_limit) * 100.0
-
-            stats_data[container.id] = {
-                "cpu": round(cpu_percent, 1),
-                "mem": round(mem_percent, 1)
-            }
-        return stats_data
-    except Exception as e:
-        return {"error": str(e)}
+            if conts: status = "Running" if all(c.status=='running' for c in conts) else "Partial"
+            res.append(Stack(name=d, status=status, containers=clist))
+    return sorted(res, key=lambda x: x.name)
 
 @app.post("/api/stack/create")
-async def create_stack(data: dict):
+async def create_stack(data: dict = Body(...), u: str = Depends(get_current_user)):
     name = data.get("name", "").strip().replace(" ", "_")
-    stack_path = os.path.join(STACKS_DIR, name)
-    os.makedirs(stack_path, exist_ok=True)
-    with open(os.path.join(stack_path, "docker-compose.yml"), 'w') as f: f.write("services:\n  ")
-    return {"status": "success", "name": name}
-
-@app.delete("/api/stack/{stack_name}")
-def delete_stack(stack_name: str):
-    client = get_docker_client()
-    try:
-        conts = client.containers.list(all=True, filters={"label": f"com.docker.compose.project={stack_name}"})
-        for c in conts: c.remove(force=True)
-        shutil.rmtree(os.path.join(STACKS_DIR, stack_name))
-        return {"status": "success"}
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/stack/{stack_name}/file/{filename}")
-def get_stack_file(stack_name: str, filename: str):
-    path = GLOBAL_ENV_PATH if filename == "global.env" else os.path.join(STACKS_DIR, stack_name, filename)
-    if not os.path.exists(path): return {"content": ""}
-    with open(path, 'r') as f: return {"content": f.read()}
-
-@app.post("/api/stack/{stack_name}/file")
-def save_stack_file(stack_name: str, data: FileUpdate):
-    path = GLOBAL_ENV_PATH if data.filename == "global.env" else os.path.join(STACKS_DIR, stack_name, data.filename)
-    with open(path, 'w') as f: f.write(data.content)
+    if not name: raise HTTPException(status_code=400, detail="Name required")
+    path = os.path.join(STACKS_DIR, name)
+    os.makedirs(path, exist_ok=True)
+    compose = os.path.join(path, "docker-compose.yml")
+    if not os.path.exists(compose):
+        with open(compose, 'w') as f: f.write("services:\n  ")
     return {"status": "success"}
 
-@app.post("/api/container/{container_id}/{action}")
-def container_action(container_id: str, action: str):
-    client = get_docker_client()
-    container = client.containers.get(container_id)
-    if action == "start": container.start()
-    elif action == "stop": container.stop()
-    elif action == "restart": container.restart()
-    return {"status": "success"}
-
-@app.get("/api/container/{container_id}/logs")
-def get_container_logs(container_id: str):
-    try:
-        container = get_docker_client().containers.get(container_id)
-        return {"logs": container.logs(tail=200).decode('utf-8')}
-    except Exception as e: return {"logs": str(e)}
-
-@app.post("/api/stack/{stack_name}/metadata")
-def save_metadata(stack_name: str, data: dict):
-    path = os.path.join(STACKS_DIR, stack_name, ".dockmaster.json")
-    existing = {}
+@app.delete("/api/stack/{sn}")
+def delete_stack(sn: str, u: str = Depends(get_current_user)):
+    path = os.path.join(STACKS_DIR, sn)
     if os.path.exists(path):
-        with open(path, 'r') as f: existing = json.load(f)
-    existing.setdefault('icons', {}).update(data.get('icons', {}))
-    with open(path, 'w') as f: json.dump(existing, f)
+        shutil.rmtree(path)
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Stack not found")
+
+@app.post("/api/container/{cid}/metadata")
+async def set_meta(cid: str, data: dict, u: str = Depends(get_current_user)):
+    m = get_metadata(); m[cid] = data; save_metadata(m)
     return {"status": "success"}
 
-@app.websocket("/ws/deploy/{stack_name}")
-async def deploy_endpoint(websocket: WebSocket, stack_name: str):
-    await websocket.accept()
-    try:
-        cmd = f"env $(cat {GLOBAL_ENV_PATH} | xargs) docker compose up -d --remove-orphans --force-recreate"
-        proc = await asyncio.create_subprocess_shell(cmd, cwd=os.path.join(STACKS_DIR, stack_name), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-        while True:
-            line = await proc.stdout.readline()
-            if not line: break
-            await websocket.send_text(line.decode().replace('\n', '\r\n'))
-    finally: await websocket.send_text("\r\n--- FINISHED ---")
+@app.get("/api/stack/{sn}/file/{fn}")
+def get_file(sn: str, fn: str, u: str = Depends(get_current_user)):
+    p = GLOBAL_ENV_PATH if fn == "global.env" else os.path.join(STACKS_DIR, sn, fn)
+    content = ""
+    if os.path.exists(p):
+        with open(p, 'r') as f: content = f.read()
+    return {"content": content}
 
-os.makedirs("static", exist_ok=True)
+@app.post("/api/stack/{sn}/file")
+def save_file(sn: str, data: FileUpdate, u: str = Depends(get_current_user)):
+    p = GLOBAL_ENV_PATH if data.filename == "global.env" else os.path.join(STACKS_DIR, sn, data.filename)
+    with open(p, 'w') as f: f.write(data.content)
+    return {"status": "success"}
+
+@app.post("/api/container/{cid}/{act}")
+def cont_act(cid: str, act: str, u: str = Depends(get_current_user)):
+    c = get_docker_client().containers.get(cid)
+    getattr(c, act)()
+    return {"status": "success"}
+
+# --- WEBSOCKETS ---
+@app.websocket("/ws/logs/{cid}")
+async def ws_logs(websocket: WebSocket, cid: str, token: str = Query(None)):
+    if not token or not verify_token(token):
+        await websocket.close(code=4003); return
+    await websocket.accept()
+    stop_evt = threading.Event()
+    loop = asyncio.get_event_loop()
+
+    def stream_worker():
+        try:
+            container = get_docker_client().containers.get(cid)
+            for line in container.logs(stream=True, tail=200, follow=True):
+                if stop_evt.is_set(): break
+                msg = line.decode('utf-8', errors='replace').replace('\n', '\r\n')
+                asyncio.run_coroutine_threadsafe(websocket.send_text(msg), loop)
+        except: pass
+
+    t = threading.Thread(target=stream_worker, daemon=True)
+    t.start()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "QUIT": break
+    except: pass
+    finally:
+        stop_evt.set()
+        await websocket.close()
+
+@app.websocket("/ws/deploy/{sn}")
+async def ws_deploy(websocket: WebSocket, sn: str, token: str = Query(None)):
+    if not token or not verify_token(token):
+        await websocket.close(code=4003); return
+    await websocket.accept()
+    cmd = f"docker compose --env-file {GLOBAL_ENV_PATH} up -d --remove-orphans --force-recreate"
+    p = await asyncio.create_subprocess_shell(cmd, cwd=os.path.join(STACKS_DIR, sn), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    while True:
+        line = await p.stdout.readline()
+        if not line: break
+        await websocket.send_text(line.decode().replace('\n', '\r\n'))
+    await websocket.send_text("\r\n--- FINISHED ---")
+    await websocket.close()
+
+@app.websocket("/ws/down/{sn}")
+async def ws_down(websocket: WebSocket, sn: str, token: str = Query(None)):
+    if not token or not verify_token(token):
+        await websocket.close(code=4003); return
+    await websocket.accept()
+    cmd = f"docker compose --env-file {GLOBAL_ENV_PATH} down"
+    p = await asyncio.create_subprocess_shell(cmd, cwd=os.path.join(STACKS_DIR, sn), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    while True:
+        line = await p.stdout.readline()
+        if not line: break
+        await websocket.send_text(line.decode().replace('\n', '\r\n'))
+    await websocket.send_text("\r\n--- FINISHED ---")
+    await websocket.close()
+
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
