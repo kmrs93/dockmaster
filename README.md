@@ -31,8 +31,8 @@ DOCKER_HOST_IP=your-server-ip-or-domain.com
 # Authentication
 # Generate via: openssl rand -hex 32
 JWT_SECRET=4f92...a381
-# Your hashed master password
-DOCKMASTER_PASSWORD_HASH=$2b$12$agF1w3GGUyhadar2ZgYNLeMfadEiIe3auVoNMNPBg0TVAoC2mD0tK
+# Your hashed master password. make sure to use $$ to escape yml variable synrtax
+DOCKMASTER_PASSWORD_HASH=$2b$12....oC2mD0tK
 
 # Path Mappings
 STACKS_PATH=${HOME}/DATA/stacks
