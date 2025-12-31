@@ -110,13 +110,23 @@
 
     <div v-if="editor.visible" class="fixed inset-0 bg-slate-950/80 z-[5000] flex items-center justify-center p-4 md:p-8 backdrop-blur-md">
         <div class="w-full h-full max-w-5xl bg-dm-card border border-slate-700/50 rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in">
-            <div class="h-16 px-6 bg-slate-800/20 border-b border-slate-700/50 flex justify-between items-center">
+            <div class="h-16 px-6 bg-slate-800/20 border-b border-slate-700/50 flex justify-between items-center shrink-0">
                 <span class="text-xs font-black text-dm-accent uppercase">{{ editor.isGlobal ? 'Global Registry' : editor.stack }}</span>
                 <div class="flex items-center gap-4">
                     <button v-if="editor.isGlobal" @click="addNewVariable" class="text-[10px] font-bold text-emerald-400 uppercase">+ Add Row</button>
                     <button @click="editor.visible = false" class="text-slate-400 text-2xl">&times;</button>
                 </div>
             </div>
+
+            <div v-if="!editor.isGlobal" class="flex lg:hidden bg-slate-900/50 border-b border-slate-700/30">
+                <button @click="editorTab = 'code'" 
+                        :class="editorTab === 'code' ? 'text-dm-accent border-b-2 border-dm-accent bg-dm-accent/5' : 'text-slate-500'" 
+                        class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest">Stack Code</button>
+                <button @click="editorTab = 'vars'" 
+                        :class="editorTab === 'vars' ? 'text-dm-accent border-b-2 border-dm-accent bg-dm-accent/5' : 'text-slate-500'" 
+                        class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest">Variables</button>
+            </div>
+
             <div class="flex-1 overflow-hidden">
                 <div v-if="editor.isGlobal" class="h-full overflow-y-auto p-6">
                     <div class="grid grid-cols-1 gap-3">
@@ -127,19 +137,31 @@
                         </div>
                     </div>
                 </div>
+
                 <div v-else class="h-full flex flex-col lg:flex-row">
-                    <textarea v-model="editor.content" @input="debounceParse" class="flex-1 bg-transparent p-6 font-mono text-xs text-slate-300 outline-none resize-none"></textarea>
-                    <div class="w-80 bg-slate-900/20 p-6 overflow-y-auto border-l border-slate-700/30">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-4">Inspector</span>
-                        <div v-for="(val, key) in parsedVars" :key="key" class="mb-4">
+                    <textarea v-if="editorTab === 'code' || isDesktop" 
+                              v-model="editor.content" 
+                              @input="debounceParse" 
+                              class="flex-1 bg-transparent p-6 font-mono text-xs text-slate-300 outline-none resize-none"
+                              :class="{'hidden lg:block': editorTab !== 'code'}"></textarea>
+                    
+                    <div v-if="editorTab === 'vars' || isDesktop" 
+                         class="w-full lg:w-80 bg-slate-900/20 p-6 overflow-y-auto lg:border-l border-slate-700/30"
+                         :class="{'hidden lg:block': editorTab !== 'vars'}">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-4 tracking-widest">Variable Inspector</span>
+                        <div v-for="(val, key) in parsedVars" :key="key" class="mb-4 animate-in">
                             <label class="text-[9px] font-bold text-slate-600 uppercase">{{ key }}</label>
-                            <input v-model="parsedVars[key]" class="w-full h-9 bg-slate-950 border border-slate-700/50 rounded-lg px-3 text-xs text-white mt-1" />
+                            <input v-model="parsedVars[key]" class="w-full h-9 bg-slate-950 border border-slate-700/50 rounded-lg px-3 text-xs text-white mt-1 focus:border-dm-accent outline-none" />
+                        </div>
+                        <div v-if="Object.keys(parsedVars).length === 0" class="text-center py-10">
+                            <p class="text-[10px] text-slate-600 font-bold uppercase">No variables detected in code</p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="p-6 bg-slate-800/20 border-t border-slate-700/50 flex items-center justify-between gap-4">
-                <button v-if="!editor.isGlobal" @click="deleteStackConfirm(editor.stack)" class="h-12 px-6 bg-rose-500/10 text-rose-500 rounded-2xl text-[11px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all">Delete Stack</button>
+
+            <div class="p-6 bg-slate-800/20 border-t border-slate-700/50 flex items-center justify-between gap-4 shrink-0">
+                <button v-if="!editor.isGlobal" @click="deleteStackConfirm(editor.stack)" class="h-12 px-6 bg-rose-500/10 text-rose-500 rounded-2xl text-[11px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all">Delete</button>
                 <button @click="saveSmartFile" class="flex-1 h-12 bg-dm-accent text-white rounded-2xl text-[11px] font-black uppercase">Save & Sync</button>
             </div>
         </div>
@@ -198,10 +220,15 @@ const isLoggedIn = ref(false), loginPass = ref(""), loginError = ref(""), loadin
 const isEditMode = ref(false), menuOpen = ref(false), searchQuery = ref(""), stacks = ref([]), sysStats = ref({});
 const activeDropdown = ref(null), activeStackMenu = ref(null);
 const editor = reactive({ visible: false, content: '', secondaryContent: '', stack: '', filename: '', isGlobal: false });
+const editorTab = ref('code'); // 'code' or 'vars'
 const metadataModal = reactive({ visible: false, containerId: null, displayName: '', iconUrl: '', manualUrl: '', urlMode: 'auto' });
 const terminal = reactive({ visible: false, title: '' }), terminalElement = ref(null);
 const parsedVars = ref({}), globalVarsObj = ref({}), globalVarKeys = ref({});
 let xterm, socket, fitAddon, parseTimer;
+
+// Reactive check for desktop size
+const isDesktop = ref(window.innerWidth >= 1024);
+window.addEventListener('resize', () => { isDesktop.value = window.innerWidth >= 1024; });
 
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const WS_HOST = window.location.host;
@@ -256,6 +283,7 @@ const debounceParse = () => {
 };
 
 const openEditor = async (sn, fn) => {
+    editorTab.value = 'code';
     const [r1, r2] = await Promise.all([axios.get(`/api/stack/${sn}/file/${fn}`), axios.get(`/api/stack/GLOBAL/file/global.env`)]);
     editor.content = r1.data.content; editor.secondaryContent = r2.data.content;
     editor.stack = sn; editor.filename = fn; editor.isGlobal = false;
