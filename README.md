@@ -16,6 +16,32 @@
 * **🔗 Smart URL Recognition:** Automatically detects and generates service links by parsing **Caddy** (Caddy Docker Proxy) labels or **Traefik** routing rules.
 
 ---
+## 📸 Screenshots
+
+### 🖥️ Desktop Interface
+| Dashboard (Main) | Stack Editor & YAML |
+| :---: | :---: |
+| ![Desktop Dashboard](screenshots/desktop-dash.png) | ![Stack Editor](screenshots/desktop-stackeditor.png) |
+
+| Edit Options | Deployment Logs |
+| :---: | :---: |
+| ![Edit Options](screenshots/desktop-edit-options.png) | ![Deployment](screenshots/deployment-log.png) |
+
+---
+
+### 📱 Mobile Optimized
+| Dashboard | YAML Editor | Env Editor |
+| :---: | :---: | :---: |
+| ![Mobile Dash](screenshots/mobile-dash.png) | ![Mobile YAML](screenshots/mobile-editstackyml.png) | ![Mobile Env](screenshots/mobile-editstackenv.png) |
+
+---
+
+### 🔍 Features in Action
+| Container Logs | Visibility Toggle |
+| :---: | :---: |
+| ![Logs](screenshots/container-logs.png) | ![Show Hidden](screenshots/desktop-showhidden.png) |
+
+---
 
 ## 🌐 Production Deployment
 
