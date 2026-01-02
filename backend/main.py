@@ -68,10 +68,11 @@ def get_docker_client():
 
 # --- MODELS ---
 class ContainerMeta(BaseModel):
-    id: str; name: str; display_name: str = ""; status: str; state: str; icon: str = ""; url: Optional[str] = None; ports: Dict = {}
+    id: str; name: str; display_name: str = ""; status: str; state: str; 
+    icon: str = ""; url: Optional[str] = None; ports: Dict = {}; hidden: bool = False
 
 class Stack(BaseModel):
-    name: str; status: str; containers: List[ContainerMeta]
+    name: str; status: str; containers: List[ContainerMeta]; hidden: bool = False
 
 class FileUpdate(BaseModel):
     content: str; filename: str
@@ -86,7 +87,7 @@ async def login(f: OAuth2PasswordRequestForm = Depends()):
 @app.get("/api/system/stats")
 def get_stats(u: str = Depends(get_current_user)):
     t = 0
-    try: 
+    try:
         with open("/sys/class/thermal/thermal_zone0/temp", "r") as f: t = int(f.read())/1000
     except: pass
     return {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent, "disk": psutil.disk_usage('/').percent, "temp": round(t, 1)}
@@ -102,16 +103,35 @@ def list_stacks(u: str = Depends(get_current_user)):
         if p:
             if p not in pmap: pmap[p] = []
             pmap[p].append(c)
-    
+
     res = []
     if not os.path.exists(STACKS_DIR): return []
     for d in os.listdir(STACKS_DIR):
         if os.path.isdir(os.path.join(STACKS_DIR, d)) and not d.startswith('.'):
             conts = pmap.get(d) or pmap.get(d.lower(), [])
-            clist = [ContainerMeta(id=c.id, name=c.name, display_name=meta.get(c.id,{}).get("display_name", c.name), status=c.status, state=c.attrs['State']['Status'], icon=meta.get(c.id,{}).get("icon",""), url=resolve_url(c, meta.get(c.id,{}).get("url")), ports=c.attrs['NetworkSettings']['Ports']) for c in conts]
+            
+            clist = []
+            for c in conts:
+                c_meta = meta.get(c.id, {})
+                clist.append(ContainerMeta(
+                    id=c.id, 
+                    name=c.name, 
+                    display_name=c_meta.get("display_name", c.name), 
+                    status=c.status, 
+                    state=c.attrs['State']['Status'], 
+                    icon=c_meta.get("icon", ""), 
+                    url=resolve_url(c, c_meta.get("url")), 
+                    ports=c.attrs['NetworkSettings']['Ports'],
+                    hidden=c_meta.get("hidden", False) # Load hidden state
+                ))
+            
             status = "Stopped"
             if conts: status = "Running" if all(c.status=='running' for c in conts) else "Partial"
-            res.append(Stack(name=d, status=status, containers=clist))
+            
+            # Load stack hidden state using folder name as key
+            stack_hidden = meta.get(f"stack:{d}", {}).get("hidden", False)
+            res.append(Stack(name=d, status=status, containers=clist, hidden=stack_hidden))
+            
     return sorted(res, key=lambda x: x.name)
 
 @app.post("/api/stack/create")
@@ -133,9 +153,22 @@ def delete_stack(sn: str, u: str = Depends(get_current_user)):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Stack not found")
 
+# --- UPDATED METADATA ENDPOINTS ---
 @app.post("/api/container/{cid}/metadata")
-async def set_meta(cid: str, data: dict, u: str = Depends(get_current_user)):
-    m = get_metadata(); m[cid] = data; save_metadata(m)
+async def set_container_meta(cid: str, data: dict, u: str = Depends(get_current_user)):
+    m = get_metadata()
+    if cid not in m: m[cid] = {}
+    m[cid].update(data) # Update only provided fields (display_name, icon, hidden, etc.)
+    save_metadata(m)
+    return {"status": "success"}
+
+@app.post("/api/stack/{sn}/metadata")
+async def set_stack_meta(sn: str, data: dict, u: str = Depends(get_current_user)):
+    m = get_metadata()
+    key = f"stack:{sn}"
+    if key not in m: m[key] = {}
+    m[key].update(data)
+    save_metadata(m)
     return {"status": "success"}
 
 @app.get("/api/stack/{sn}/file/{fn}")

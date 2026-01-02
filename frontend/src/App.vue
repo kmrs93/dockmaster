@@ -19,96 +19,129 @@
       </div>
     </div>
 
-    <div v-else @click="closeAllMenus" class="min-h-screen p-4 md:p-6">
-      <header class="max-w-[1600px] mx-auto mb-8 relative">
-        <div class="flex flex-wrap lg:flex-nowrap items-center gap-4 lg:gap-6">
-          <h1 class="flex items-center gap-2 shrink-0 tracking-tighter order-1">
-            <span class="text-2xl text-dm-accent drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">⚓</span>
-            <span class="text-xl font-black text-white block">DockMaster</span>
+    <div v-else @click="closeAllMenus" class="min-h-screen">
+      <header class="sticky top-0 z-[1000] bg-dm-bg/80 backdrop-blur-md border-b border-slate-700/30 px-3 md:px-6 py-3">
+        <div class="max-w-[1600px] mx-auto flex items-center justify-between gap-2 md:gap-6">
+          
+          <h1 class="flex items-center gap-1.5 shrink-0 tracking-tighter">
+            <span class="text-xl md:text-2xl text-dm-accent drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">⚓</span>
+            <span class="text-sm md:text-xl font-black text-white block">DockMaster</span>
           </h1>
-          <div class="relative flex-grow order-3 lg:order-2 min-w-[200px]">
-            <input v-model="searchQuery" type="text" placeholder="Search stacks..." class="w-full h-11 bg-dm-card/50 border border-slate-700/50 rounded-xl px-10 text-xs text-white outline-none focus:border-dm-accent" />
-          </div>
-          <div class="order-4 lg:order-3 w-full lg:w-auto">
-            <div class="bg-dm-card/40 border border-slate-700/30 rounded-xl px-4 h-11 flex items-center gap-5 overflow-x-auto no-scrollbar">
-                <div v-for="(val, key) in sysStats" :key="key" class="flex items-center gap-2 shrink-0">
-                    <span class="text-[9px] font-black uppercase text-slate-500">{{ key }}</span>
-                    <span class="text-xs font-bold text-white tabular-nums">{{ val }}{{ key === 'temp' ? '°C' : '%' }}</span>
+          
+          <div class="flex-1 flex justify-center px-1 md:px-0 overflow-hidden">
+            <div class="bg-dm-card/40 border border-slate-700/30 rounded-xl px-2 md:px-4 h-9 md:h-11 flex items-center gap-2 md:gap-5 overflow-x-auto no-scrollbar max-w-full">
+                <div v-for="(val, key) in sysStats" :key="key" class="flex items-center gap-1 md:gap-2 shrink-0">
+                    <span class="hidden md:block text-[9px] font-black uppercase text-slate-500">{{ key }}</span>
+                    <span class="md:hidden text-[8px] text-slate-500">●</span>
+                    <span class="text-[10px] md:text-xs font-bold text-white tabular-nums">{{ val }}{{ key === 'temp' ? '°C' : '%' }}</span>
                 </div>
             </div>
           </div>
-          <div class="order-2 lg:order-4 shrink-0 ml-auto lg:ml-0">
-            <button @click.stop="menuOpen = !menuOpen" class="w-11 h-11 flex flex-col items-center justify-center gap-1.5 bg-slate-800/50 border border-slate-700/50 rounded-xl" :class="isEditMode ? 'border-dm-accent' : ''">
-              <div class="w-5 h-0.5 bg-slate-300 rounded-full"></div>
-              <div class="w-5 h-0.5 bg-slate-300 rounded-full"></div>
-              <div class="w-5 h-0.5 bg-slate-300 rounded-full"></div>
+
+          <div class="flex items-center gap-4 shrink-0">
+            <div class="relative w-48 lg:w-64 hidden lg:block">
+              <input v-model="searchQuery" type="text" placeholder="Search..." class="w-full h-11 bg-dm-card/50 border border-slate-700/50 rounded-xl px-10 text-xs text-white outline-none focus:border-dm-accent transition-all" />
+              <span class="absolute left-3 top-3.5 opacity-30 text-xs">🔍</span>
+            </div>
+            
+            <button @click.stop="menuOpen = !menuOpen" class="w-9 h-9 md:w-11 md:h-11 flex flex-col items-center justify-center gap-1 md:gap-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg md:rounded-xl transition-all hover:bg-slate-700/50" :class="isEditMode ? 'border-dm-accent shadow-[0_0_10px_rgba(59,130,246,0.2)]' : ''">
+              <div class="w-4 md:w-5 h-0.5 bg-slate-300 rounded-full"></div>
+              <div class="w-4 md:w-5 h-0.5 bg-slate-300 rounded-full"></div>
+              <div class="w-4 md:w-5 h-0.5 bg-slate-300 rounded-full"></div>
             </button>
           </div>
         </div>
+
+        <div class="lg:hidden mt-3 px-1">
+            <div class="relative max-w-2xl mx-auto">
+                <input v-model="searchQuery" type="text" placeholder="Search stacks..." class="w-full h-10 bg-dm-card/50 border border-slate-700/50 rounded-xl px-10 text-xs text-white outline-none focus:border-dm-accent" />
+                <span class="absolute left-3 top-3 opacity-30 text-xs">🔍</span>
+            </div>
+        </div>
+
         <transition name="menu-fade">
-          <div v-if="menuOpen" @click.stop class="absolute right-0 top-14 z-[1000]">
-            <div class="bg-dm-card border border-slate-700 rounded-2xl shadow-2xl w-56 overflow-hidden">
-              <div @click="isEditMode = !isEditMode" class="flex items-center justify-between p-4 hover:bg-white/5 cursor-pointer">
-                <span class="text-xs font-bold uppercase" :class="isEditMode ? 'text-dm-accent' : 'text-slate-400'">Edit Mode</span>
+          <div v-if="menuOpen" @click.stop class="absolute right-3 md:right-6 top-16 md:top-20 z-[1001]">
+            <div class="bg-dm-card border border-slate-700 rounded-2xl shadow-2xl w-60 md:w-64 overflow-hidden">
+              <div @click="isEditMode = !isEditMode" class="flex items-center justify-between p-4 hover:bg-white/[0.02] cursor-pointer transition-colors">
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="isEditMode ? 'text-dm-accent' : 'text-slate-400'">Edit Mode</span>
                 <div class="relative h-5 w-10 rounded-full transition-colors" :class="isEditMode ? 'bg-dm-accent' : 'bg-slate-700'">
-                  <span class="absolute h-4 w-4 bg-white rounded-full transition-all mt-0.5 ml-0.5" :class="isEditMode ? 'translate-x-5' : 'translate-x-0'"></span>
+                  <span class="absolute h-4 w-4 bg-white rounded-full transition-all mt-0.5 ml-0.5 shadow-sm" :class="isEditMode ? 'translate-x-5' : 'translate-x-0'"></span>
                 </div>
               </div>
+              <div @click="showHidden = !showHidden" class="flex items-center justify-between p-4 hover:bg-white/[0.02] cursor-pointer border-t border-slate-700/30 transition-colors">
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="showHidden ? 'text-amber-400' : 'text-slate-400'">Show Hidden</span>
+                <svg v-if="showHidden" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </div>
               <template v-if="isEditMode">
-                <div @click="openGlobalVariables(); menuOpen = false" class="p-4 hover:bg-white/5 cursor-pointer border-t border-slate-700/30 text-xs font-bold text-slate-300 uppercase">Global Registry</div>
-                <button @click="openCreationModal(); menuOpen = false" class="w-full text-left p-4 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 uppercase border-t border-slate-700/30">＋  New Stack</button>
+                <div @click="openGlobalVariables(); menuOpen = false" class="flex items-center justify-between p-4 hover:bg-white/[0.02] cursor-pointer border-t border-slate-700/30 transition-colors">
+                  <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Global Registry</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </div>
+                <div @click="openCreationModal(); menuOpen = false" class="flex items-center justify-between p-4 hover:bg-emerald-500/5 cursor-pointer border-t border-slate-700/30 transition-colors">
+                  <span class="text-[10px] font-black uppercase tracking-widest text-emerald-400">New Stack</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </div>
               </template>
-              <button @click="logout" class="w-full text-left p-4 text-xs font-bold text-rose-500 hover:bg-rose-500/10 uppercase border-t border-slate-700/30">Logout</button>
+              <div @click="logout" class="flex items-center justify-between p-4 hover:bg-rose-500/5 cursor-pointer border-t border-slate-700/30 transition-colors group">
+                <span class="text-[10px] font-black uppercase tracking-widest text-rose-500">Logout</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-rose-500/60 group-hover:text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              </div>
             </div>
           </div>
         </transition>
       </header>
 
-      <div class="max-w-[1600px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-        <div v-for="stack in filteredStacks" :key="stack.name" class="bg-dm-card rounded-2xl p-5 border border-slate-700/50 flex flex-col shadow-lg animate-in group relative">
-          <div class="flex justify-between items-start mb-5">
-            <div class="truncate">
-              <h2 class="text-base font-black text-white truncate tracking-tight">{{ stack.name }}</h2>
-              <div class="flex items-center gap-1.5 mt-1">
-                <span class="w-1.5 h-1.5 rounded-full" :class="stack.status === 'Running' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
-                <span class="text-[10px] font-bold uppercase text-slate-500">{{ stack.status }}</span>
-              </div>
-            </div>
-            <div v-if="isEditMode" class="relative">
-              <button @click.stop="activeStackMenu = activeStackMenu === stack.name ? null : stack.name" class="w-8 h-8 flex items-center justify-center text-slate-500 rounded-lg bg-slate-800/30 border border-slate-700/30">⋮</button>
-              <div v-if="activeStackMenu === stack.name" class="absolute right-0 top-full mt-2 z-[200] bg-dm-card border border-slate-700 rounded-xl shadow-2xl py-1 w-44">
-                <button @click="openEditor(stack.name, 'docker-compose.yml'); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-white hover:bg-white/10 uppercase">Edit Stack</button>
-                <button @click="triggerDeploy(stack.name); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 uppercase">Deploy</button>
-                <button @click="triggerDown(stack.name); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 uppercase">Down</button>
-              </div>
-            </div>
-          </div>
-          <div class="space-y-3">
-            <div v-for="cont in stack.containers" :key="cont.id" class="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30 flex items-center justify-between">
-              <div class="flex items-center gap-3 overflow-hidden">
-                <div @click="openContainerUI(cont)" class="w-9 h-9 shrink-0 flex items-center justify-center bg-slate-800 rounded-lg p-1.5 border border-slate-700/50 cursor-pointer hover:border-dm-accent">
-                    <img :src="cont.icon || DEFAULT_SVG" class="w-full h-full object-contain" />
-                </div>
-                <div class="flex flex-col truncate">
-                  <span @click="openContainerUI(cont)" class="text-sm font-bold text-slate-200 cursor-pointer hover:text-dm-accent truncate">{{ cont.display_name || cont.name }}</span>
-                  <span class="text-[9px] uppercase font-mono text-slate-500">{{ cont.status }}</span>
+      <div class="max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-20">
+        <template v-for="stack in filteredStacks" :key="stack.name">
+          <div v-if="!stack.hidden || showHidden" class="bg-dm-card rounded-2xl p-5 border border-slate-700/50 flex flex-col shadow-lg animate-in group relative" :class="stack.hidden ? 'opacity-50 grayscale' : ''">
+            <div class="flex justify-between items-start mb-5">
+              <div class="truncate">
+                <h2 class="text-base font-black text-white truncate tracking-tight flex items-center gap-2">
+                    {{ stack.name }}
+                    <span v-if="stack.hidden" class="text-[9px] bg-amber-500/20 text-amber-500 px-1.5 rounded uppercase font-bold">Hidden</span>
+                </h2>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="stack.status === 'Running' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                  <span class="text-[10px] font-bold uppercase text-slate-500">{{ stack.status }}</span>
                 </div>
               </div>
               <div v-if="isEditMode" class="relative">
-                  <button @click.stop="activeDropdown = activeDropdown === cont.id ? null : cont.id" class="w-8 h-8 text-slate-500 hover:text-white">⋮</button>
-                  <div v-if="activeDropdown === cont.id" class="absolute right-0 top-full z-[100] mt-2 bg-dm-card border border-slate-700 rounded-xl py-1 w-40 shadow-2xl">
-                    <button @click="openMetadataEditor(cont)" class="w-full text-left px-4 py-2 text-[10px] font-bold text-amber-400 hover:bg-white/5 uppercase">Config</button>
-                    <button @click="triggerLogs(cont)" class="w-full text-left px-4 py-2 text-[10px] font-bold text-dm-accent hover:bg-white/5 uppercase">Logs</button>
-                    <button @click="runAction(cont.id, cont.status === 'running' ? 'stop' : 'start')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase" :class="cont.status === 'running' ? 'text-rose-400' : 'text-emerald-400'">{{ cont.status === 'running' ? 'Stop' : 'Start' }}</button>
-                  </div>
+                <button @click.stop="activeStackMenu = activeStackMenu === stack.name ? null : stack.name" class="w-8 h-8 flex items-center justify-center text-slate-500 rounded-lg bg-slate-800/30 border border-slate-700/30 hover:text-white transition-colors">⋮</button>
+                <div v-if="activeStackMenu === stack.name" class="absolute right-0 top-full mt-2 z-[200] bg-dm-card border border-slate-700 rounded-xl shadow-2xl py-1 w-44 overflow-hidden animate-in">
+                  <button @click="openEditor(stack.name, 'docker-compose.yml'); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-white hover:bg-white/10 uppercase">Edit Stack</button>
+                  <button @click="toggleStackVisibility(stack); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-amber-400 hover:bg-white/10 uppercase">{{ stack.hidden ? 'Unhide Stack' : 'Hide Stack' }}</button>
+                  <button @click="triggerDeploy(stack.name); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 uppercase border-t border-slate-700/30">Deploy</button>
+                  <button @click="triggerDown(stack.name); activeStackMenu = null" class="w-full text-left px-4 py-2.5 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 uppercase">Down</button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div v-if="editor.visible" class="fixed inset-0 bg-slate-950/80 z-[5000] flex items-center justify-center p-4 md:p-8 backdrop-blur-md">
+            <div class="grid grid-cols-3 gap-3">
+              <template v-for="cont in stack.containers" :key="cont.id">
+                <div v-if="!cont.hidden || showHidden" class="relative group/card aspect-square bg-slate-900/50 border border-slate-700/30 rounded-2xl flex flex-col items-center justify-center p-2 hover:border-dm-accent transition-all" :class="cont.hidden ? 'opacity-40 grayscale border-dashed' : ''">
+                  <div class="absolute top-2 left-2 w-2 h-2 rounded-full shadow-[0_0_5px_rgba(0,0,0,0.5)]" :class="cont.status === 'running' ? 'bg-emerald-500' : 'bg-rose-500'"></div>
+                  <div v-if="isEditMode" class="absolute top-1 right-1">
+                      <button @click.stop="activeDropdown = activeDropdown === cont.id ? null : cont.id" class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-white">⋮</button>
+                      <div v-if="activeDropdown === cont.id" class="absolute right-0 top-full z-[300] mt-1 bg-dm-card border border-slate-700 rounded-xl py-1 w-32 shadow-2xl overflow-hidden animate-in">
+                        <button @click="openMetadataEditor(cont)" class="w-full text-left px-3 py-2 text-[9px] font-bold text-amber-400 hover:bg-white/5 uppercase">Config</button>
+                        <button @click="toggleContainerVisibility(cont)" class="w-full text-left px-3 py-2 text-[9px] font-bold text-slate-400 hover:bg-white/5 uppercase">{{ cont.hidden ? 'Unhide' : 'Hide' }}</button>
+                        <button @click="triggerLogs(cont)" class="w-full text-left px-3 py-2 text-[9px] font-bold text-dm-accent hover:bg-white/5 uppercase border-t border-slate-700/30">Logs</button>
+                        <button @click="runAction(cont.id, cont.status === 'running' ? 'stop' : 'start')" class="w-full text-left px-3 py-2 text-[9px] font-bold uppercase" :class="cont.status === 'running' ? 'text-rose-400' : 'text-emerald-400'">{{ cont.status === 'running' ? 'Stop' : 'Start' }}</button>
+                      </div>
+                  </div>
+                  <div @click="openContainerUI(cont)" class="w-10 h-10 mb-2 cursor-pointer transition-transform hover:scale-110">
+                      <img :src="getIconUrl(cont)" @error="handleIconError" class="w-full h-full object-contain" />
+                  </div>
+                  <span @click="openContainerUI(cont)" class="text-[10px] font-bold text-slate-300 text-center truncate w-full px-1 cursor-pointer">{{ cont.display_name || cont.name }}</span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div v-if="editor.visible" class="fixed inset-0 bg-slate-950/80 z-[5000] flex items-center justify-center p-4 md:p-8 backdrop-blur-md">
         <div class="w-full h-full max-w-5xl bg-dm-card border border-slate-700/50 rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in">
             <div class="h-16 px-6 bg-slate-800/20 border-b border-slate-700/50 flex justify-between items-center shrink-0">
                 <span class="text-xs font-black text-dm-accent uppercase">{{ editor.isGlobal ? 'Global Registry' : editor.stack }}</span>
@@ -117,92 +150,79 @@
                     <button @click="editor.visible = false" class="text-slate-400 text-2xl">&times;</button>
                 </div>
             </div>
-
-            <div v-if="!editor.isGlobal" class="flex lg:hidden bg-slate-900/50 border-b border-slate-700/30">
-                <button @click="editorTab = 'code'" 
-                        :class="editorTab === 'code' ? 'text-dm-accent border-b-2 border-dm-accent bg-dm-accent/5' : 'text-slate-500'" 
-                        class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest">Stack Code</button>
-                <button @click="editorTab = 'vars'" 
-                        :class="editorTab === 'vars' ? 'text-dm-accent border-b-2 border-dm-accent bg-dm-accent/5' : 'text-slate-500'" 
-                        class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest">Variables</button>
-            </div>
-
             <div class="flex-1 overflow-hidden">
                 <div v-if="editor.isGlobal" class="h-full overflow-y-auto p-6">
-                    <div class="grid grid-cols-1 gap-3">
-                        <div v-for="(val, id) in globalVarsObj" :key="id" class="flex items-center gap-3">
-                            <input v-model="globalVarKeys[id]" placeholder="NAME" class="w-1/3 h-11 bg-slate-950 border border-slate-700/50 rounded-xl px-4 text-xs font-mono text-dm-accent" />
-                            <input v-model="globalVarsObj[id]" placeholder="Value" class="flex-1 h-11 bg-slate-950 border border-slate-700/50 rounded-xl px-4 text-xs text-white" />
-                            <button @click="deleteVariable(id)" class="text-rose-500/40 hover:text-rose-500">🗑</button>
-                        </div>
+                    <div v-for="(val, id) in globalVarsObj" :key="id" class="flex items-center gap-3 mb-3">
+                        <input v-model="globalVarKeys[id]" placeholder="KEY" class="w-1/3 h-11 bg-slate-950 border border-slate-700 rounded-xl px-4 text-xs font-mono text-dm-accent" />
+                        <input v-model="globalVarsObj[id]" placeholder="VALUE" class="flex-1 h-11 bg-slate-950 border border-slate-700 rounded-xl px-4 text-xs text-white" />
+                        <button @click="deleteVariable(id)" class="text-rose-500/40">🗑</button>
                     </div>
                 </div>
-
                 <div v-else class="h-full flex flex-col lg:flex-row">
-                    <textarea v-if="editorTab === 'code' || isDesktop" 
-                              v-model="editor.content" 
-                              @input="debounceParse" 
-                              class="flex-1 bg-transparent p-6 font-mono text-xs text-slate-300 outline-none resize-none"
-                              :class="{'hidden lg:block': editorTab !== 'code'}"></textarea>
-                    
-                    <div v-if="editorTab === 'vars' || isDesktop" 
-                         class="w-full lg:w-80 bg-slate-900/20 p-6 overflow-y-auto lg:border-l border-slate-700/30"
-                         :class="{'hidden lg:block': editorTab !== 'vars'}">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-4 tracking-widest">Variable Inspector</span>
-                        <div v-for="(val, key) in parsedVars" :key="key" class="mb-4 animate-in">
+                    <textarea v-model="editor.content" @input="debounceParse" class="flex-1 bg-transparent p-6 font-mono text-xs text-slate-300 outline-none resize-none"></textarea>
+                    <div class="w-full lg:w-80 bg-slate-900/20 p-6 overflow-y-auto border-l border-slate-700/30">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-4 tracking-widest text-center">Variable Inspector</span>
+                        <div v-for="(val, key) in parsedVars" :key="key" class="mb-4">
                             <label class="text-[9px] font-bold text-slate-600 uppercase">{{ key }}</label>
-                            <input v-model="parsedVars[key]" class="w-full h-9 bg-slate-950 border border-slate-700/50 rounded-lg px-3 text-xs text-white mt-1 focus:border-dm-accent outline-none" />
-                        </div>
-                        <div v-if="Object.keys(parsedVars).length === 0" class="text-center py-10">
-                            <p class="text-[10px] text-slate-600 font-bold uppercase">No variables detected in code</p>
+                            <input v-model="parsedVars[key]" class="w-full h-9 bg-slate-950 border border-slate-700 rounded-lg px-3 text-xs text-white mt-1 outline-none focus:border-dm-accent" />
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="p-6 bg-slate-800/20 border-t border-slate-700/50 flex items-center justify-between gap-4 shrink-0">
-                <button v-if="!editor.isGlobal" @click="deleteStackConfirm(editor.stack)" class="h-12 px-6 bg-rose-500/10 text-rose-500 rounded-2xl text-[11px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all">Delete</button>
+                <button v-if="!editor.isGlobal" @click="deleteStackConfirm(editor.stack)" class="h-12 px-6 bg-rose-500/10 text-rose-500 rounded-2xl text-[11px] font-black uppercase hover:bg-rose-500 transition-all">Delete</button>
                 <button @click="saveSmartFile" class="flex-1 h-12 bg-dm-accent text-white rounded-2xl text-[11px] font-black uppercase">Save & Sync</button>
             </div>
         </div>
-    </div>
+      </div>
 
-    <div v-if="terminal.visible" class="fixed inset-0 bg-slate-950/90 z-[6000] flex items-center justify-center p-0 md:p-6 backdrop-blur-md">
-        <div class="w-full h-full md:max-w-4xl md:h-[65vh] bg-slate-950 border border-slate-800 md:rounded-2xl flex flex-col overflow-hidden">
-            <div class="p-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
-                <span class="text-[10px] font-mono text-dm-accent uppercase">{{ terminal.title }}</span>
-                <button @click="closeTerminal" class="px-4 py-1.5 bg-rose-600 text-white text-[10px] font-black uppercase rounded-lg">Close</button>
-            </div>
-            <div ref="terminalElement" class="flex-1 p-3 bg-black overflow-hidden font-mono text-xs"></div>
-        </div>
-    </div>
+      <div v-if="terminal.visible" class="fixed inset-0 bg-slate-950/90 z-[6000] flex items-center justify-center p-4 backdrop-blur-xl">
+          <div class="w-full max-w-4xl h-[70vh] bg-black border border-slate-700/50 rounded-3xl flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden animate-in">
+              <div class="h-14 px-6 bg-slate-900/50 border-b border-white/5 flex justify-between items-center">
+                  <div class="flex items-center gap-3">
+                      <div class="flex gap-1.5">
+                          <div class="w-3 h-3 rounded-full bg-rose-500/20 border border-rose-500/40"></div>
+                          <div class="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                          <div class="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/40"></div>
+                      </div>
+                      <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ terminal.title }}</span>
+                  </div>
+                  <button @click="closeTerminal" class="text-slate-500 hover:text-white transition-colors text-xl">&times;</button>
+              </div>
+              <div ref="terminalElement" class="flex-1 p-4 bg-black overflow-hidden"></div>
+          </div>
+      </div>
 
-    <div v-if="metadataModal.visible" class="fixed inset-0 bg-slate-950/80 z-[7000] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="w-full max-w-sm bg-dm-card border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-xs font-black uppercase text-dm-accent mb-4">Update Container Config</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[9px] font-bold text-slate-500 uppercase">Display Name</label>
-                    <input v-model="metadataModal.displayName" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-lg px-3 text-sm text-white mt-1" />
-                </div>
-                <div>
-                    <label class="text-[9px] font-bold text-slate-500 uppercase">Icon URL</label>
-                    <input v-model="metadataModal.iconUrl" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-lg px-3 text-sm text-white mt-1" />
-                </div>
-                <div>
-                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Launch URL Mode</label>
-                    <div class="flex gap-1 mb-2">
-                        <button @click="metadataModal.urlMode = 'auto'" :class="metadataModal.urlMode === 'auto' ? 'bg-dm-accent text-white' : 'bg-slate-800 text-slate-500'" class="flex-1 py-1.5 rounded text-[9px] font-bold uppercase">Auto</button>
-                        <button @click="metadataModal.urlMode = 'manual'" :class="metadataModal.urlMode === 'manual' ? 'bg-dm-accent text-white' : 'bg-slate-800 text-slate-500'" class="flex-1 py-1.5 rounded text-[9px] font-bold uppercase">Manual</button>
-                    </div>
-                    <input v-if="metadataModal.urlMode === 'manual'" v-model="metadataModal.manualUrl" placeholder="https://..." class="w-full h-10 bg-slate-950 border border-slate-700 rounded-lg px-3 text-xs text-white mt-2" />
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button @click="metadataModal.visible = false" class="flex-1 h-10 bg-slate-800 text-slate-400 rounded-lg text-[10px] font-bold uppercase">Cancel</button>
-                    <button @click="saveMetadata" class="flex-1 h-10 bg-dm-accent text-white rounded-lg text-[10px] font-bold uppercase">Save</button>
-                </div>
-            </div>
-        </div>
+      <div v-if="metadataModal.visible" class="fixed inset-0 bg-slate-950/80 z-[5000] flex items-center justify-center p-4 backdrop-blur-md">
+          <div class="w-full max-w-md bg-dm-card border border-slate-700/50 rounded-3xl p-8 shadow-2xl animate-in">
+              <h3 class="text-lg font-black text-white mb-6 uppercase tracking-tight">Container Settings</h3>
+              <div class="space-y-4">
+                  <div>
+                      <label class="text-[10px] font-black text-slate-500 uppercase">Display Name</label>
+                      <input v-model="metadataModal.displayName" class="w-full h-12 bg-slate-950 border border-slate-700 rounded-xl px-4 text-white mt-1 outline-none focus:border-dm-accent" />
+                  </div>
+                  <div>
+                      <label class="text-[10px] font-black text-slate-500 uppercase">Icon URL (Optional)</label>
+                      <input v-model="metadataModal.iconUrl" placeholder="https://..." class="w-full h-12 bg-slate-950 border border-slate-700 rounded-xl px-4 text-white mt-1 outline-none focus:border-dm-accent" />
+                  </div>
+                  <div>
+                      <label class="text-[10px] font-black text-slate-500 uppercase">URL Mode</label>
+                      <select v-model="metadataModal.urlMode" class="w-full h-12 bg-slate-950 border border-slate-700 rounded-xl px-4 text-white mt-1 outline-none focus:border-dm-accent appearance-none">
+                          <option value="auto">Auto-detect (Port/Caddy)</option>
+                          <option value="manual">Manual Override</option>
+                      </select>
+                  </div>
+                  <div v-if="metadataModal.urlMode === 'manual'">
+                      <label class="text-[10px] font-black text-slate-500 uppercase">Override URL</label>
+                      <input v-model="metadataModal.manualUrl" placeholder="https://myapp.local" class="w-full h-12 bg-slate-950 border border-slate-700 rounded-xl px-4 text-white mt-1 outline-none focus:border-dm-accent" />
+                  </div>
+              </div>
+              <div class="flex gap-3 mt-8">
+                  <button @click="metadataModal.visible = false" class="flex-1 h-12 bg-slate-800 text-slate-300 rounded-xl font-black uppercase text-[11px]">Cancel</button>
+                  <button @click="saveMetadata" class="flex-1 h-12 bg-dm-accent text-white rounded-xl font-black uppercase text-[11px]">Save Changes</button>
+              </div>
+          </div>
+      </div>
     </div>
   </div>
 </template>
@@ -217,18 +237,20 @@ import 'xterm/css/xterm.css';
 const DEFAULT_SVG = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>')}`;
 
 const isLoggedIn = ref(false), loginPass = ref(""), loginError = ref(""), loading = ref(false);
-const isEditMode = ref(false), menuOpen = ref(false), searchQuery = ref(""), stacks = ref([]), sysStats = ref({});
+const isEditMode = ref(false), menuOpen = ref(false), showHidden = ref(false), searchQuery = ref(""), stacks = ref([]), sysStats = ref({});
 const activeDropdown = ref(null), activeStackMenu = ref(null);
 const editor = reactive({ visible: false, content: '', secondaryContent: '', stack: '', filename: '', isGlobal: false });
-const editorTab = ref('code'); // 'code' or 'vars'
 const metadataModal = reactive({ visible: false, containerId: null, displayName: '', iconUrl: '', manualUrl: '', urlMode: 'auto' });
 const terminal = reactive({ visible: false, title: '' }), terminalElement = ref(null);
 const parsedVars = ref({}), globalVarsObj = ref({}), globalVarKeys = ref({});
 let xterm, socket, fitAddon, parseTimer;
 
-// Reactive check for desktop size
-const isDesktop = ref(window.innerWidth >= 1024);
-window.addEventListener('resize', () => { isDesktop.value = window.innerWidth >= 1024; });
+const getIconUrl = (cont) => {
+    if (cont.icon && cont.icon.startsWith('http')) return cont.icon;
+    const cleanName = cont.name.split(/[-_]/)[0].toLowerCase();
+    return `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${cleanName}.png`;
+};
+const handleIconError = (e) => { e.target.src = DEFAULT_SVG; };
 
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const WS_HOST = window.location.host;
@@ -283,7 +305,6 @@ const debounceParse = () => {
 };
 
 const openEditor = async (sn, fn) => {
-    editorTab.value = 'code';
     const [r1, r2] = await Promise.all([axios.get(`/api/stack/${sn}/file/${fn}`), axios.get(`/api/stack/GLOBAL/file/global.env`)]);
     editor.content = r1.data.content; editor.secondaryContent = r2.data.content;
     editor.stack = sn; editor.filename = fn; editor.isGlobal = false;
@@ -314,12 +335,9 @@ const saveSmartFile = async () => {
     editor.visible = false; fetchStacks();
 };
 
-const deleteStackConfirm = async (sn) => {
-    if(confirm(`WARNING: This will permanently delete the folder for stack: ${sn}. Proceed?`)) {
-        await axios.delete(`/api/stack/${sn}`);
-        editor.visible = false; fetchStacks();
-    }
-};
+const toggleStackVisibility = async (stack) => { await axios.post(`/api/stack/${stack.name}/metadata`, { hidden: !stack.hidden }); fetchStacks(); };
+const toggleContainerVisibility = async (cont) => { await axios.post(`/api/container/${cont.id}/metadata`, { hidden: !cont.hidden }); fetchStacks(); };
+const deleteStackConfirm = async (sn) => { if(confirm(`WARNING: This will permanently delete stack: ${sn}. Proceed?`)) { await axios.delete(`/api/stack/${sn}`); editor.visible = false; fetchStacks(); } };
 
 const openMetadataEditor = (c) => {
     metadataModal.containerId = c.id;
@@ -332,9 +350,7 @@ const openMetadataEditor = (c) => {
 
 const saveMetadata = async () => {
     await axios.post(`/api/container/${metadataModal.containerId}/metadata`, {
-        display_name: metadataModal.displayName,
-        icon: metadataModal.iconUrl,
-        url: metadataModal.urlMode === 'manual' ? metadataModal.manualUrl : null
+        display_name: metadataModal.displayName, icon: metadataModal.iconUrl, url: metadataModal.urlMode === 'manual' ? metadataModal.manualUrl : null
     });
     metadataModal.visible = false; fetchStacks();
 };
@@ -364,7 +380,7 @@ const triggerLogs = (c) => {
 };
 
 const triggerDeploy = (n) => {
-    setupTerminal(`Deploy: ${n}`);
+    setupTerminal(`Deploying Stack: ${n}`);
     socket = new WebSocket(`${WS_PROTOCOL}//${WS_HOST}/ws/deploy/${n}?token=${localStorage.getItem('dm_token')}`);
     socket.onmessage = (e) => xterm.write(e.data);
     socket.onclose = () => fetchStacks();
@@ -372,7 +388,7 @@ const triggerDeploy = (n) => {
 
 const triggerDown = (n) => {
     if(confirm(`Down stack ${n}?`)) {
-        setupTerminal(`Down: ${n}`);
+        setupTerminal(`Stopping Stack: ${n}`);
         socket = new WebSocket(`${WS_PROTOCOL}//${WS_HOST}/ws/down/${n}?token=${localStorage.getItem('dm_token')}`);
         socket.onmessage = (e) => xterm.write(e.data);
         socket.onclose = () => fetchStacks();
@@ -386,24 +402,8 @@ const closeTerminal = () => {
 };
 
 const runAction = async (id, a) => { await axios.post(`/api/container/${id}/${a}`); setTimeout(fetchStacks, 1000); };
-
-const openCreationModal = async () => {
-    const n = prompt("New Stack Name:");
-    if(n) {
-        try {
-            await axios.post('/api/stack/create', { name: n });
-            fetchStacks();
-        } catch(e) {
-            alert("Error: " + (e.response?.data?.detail || "Method Not Allowed"));
-        }
-    }
-};
-
-const addNewVariable = () => {
-    const id = Math.random().toString(36).substr(2, 9);
-    globalVarKeys.value[id] = ""; globalVarsObj.value[id] = "";
-};
-
+const openCreationModal = async () => { const n = prompt("New Stack Name:"); if(n) { await axios.post('/api/stack/create', { name: n }); fetchStacks(); } };
+const addNewVariable = () => { const id = Math.random().toString(36).substr(2, 9); globalVarKeys.value[id] = ""; globalVarsObj.value[id] = ""; };
 const deleteVariable = (id) => { delete globalVarsObj.value[id]; delete globalVarKeys.value[id]; };
 
 onMounted(() => { if (localStorage.getItem('dm_token')) { isLoggedIn.value = true; startApp(); } });
@@ -422,4 +422,6 @@ body { font-family: 'Inter', sans-serif; background: var(--dm-bg); margin: 0; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .menu-fade-enter-active, .menu-fade-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .menu-fade-enter-from, .menu-fade-leave-to { opacity: 0; transform: scale(0.95); }
+.xterm-viewport::-webkit-scrollbar { width: 8px; }
+.xterm-viewport::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 </style>
